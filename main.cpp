@@ -3,7 +3,7 @@
 
 int main()
 {
-  BigInt bi("123456789123456789"); //a number larger than max_int
+  BigInt biggerInt("999999999999999999999999999999999999999999999999999999");
 
-  bi.quickPrint(); //prints the large number
+  biggerInt.quickPrint();
 }
