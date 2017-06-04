@@ -41,13 +41,53 @@ public:
   /**
    * Relational: greater than
    */
-   bool operator>(BigInt& secondNumber) const;
+   bool operator>(const BigInt& secondNumber) const;
+
+  /**
+   * Relational: less than
+   */
+  bool operator<(const BigInt& secondNumber) const;
+
+  /**
+   * Relational: equality
+   */
+  bool operator==(const BigInt& secondNumber) const;
+
+  /**
+   * Relational: less than and equal to
+   */
+  bool operator<=(const BigInt& secondNumber) const;
+
+  /**
+   * Relational: greater than and equal to
+   */
+  bool operator>=(const BigInt& secondNumber) const;
 
   /**
    * The + operation of BigInt. Takes the second number and adds it to the current number, returning the new number
    * @param secondNumber The second BigInt to add to
    */
   BigInt operator+(BigInt secondNumber);
+
+  /**
+   * The ++ operation of BigInt. Increments the current number
+   */
+  BigInt& operator++();
+
+  /**
+   * The ++ (postfix) operation of BigInt. Returns the current number, but increments it.
+   */
+  BigInt operator++(int);
+
+  /**
+   * The -- (postfix) operation of BigInt. Returns the current number, but decrements it.
+   */
+  BigInt operator--(int);
+
+  /**
+   * The -- operation of BigInt. Decrements the current number
+   */
+  BigInt& operator--();
 
   /**
    * The += operation of BigInt. Takes the second number and adds it to the current number, returning the current number.
@@ -60,6 +100,23 @@ public:
    * @param secondNumber The second BigInt to subtract to
    */
   BigInt operator-(BigInt secondNumber);
+
+  /**
+   * The operator-=. Takes the second number and subtracts it from the current number, returning the current number
+   * @param secondNumber The second BigInt to subtract to
+   */
+  BigInt& operator-=(BigInt secondNumber);
+
+  /**
+   * The operator*. Takes the second number as multiplier.
+   * @param secondNumber The second BigInt to multiply to.
+   */
+  BigInt operator*(BigInt secondNumber);
+
+  /**
+   * Unary (-) overloading
+   */
+  BigInt& operator-();
 
 
   void quickPrint(); //a convenient function to use while developing to print the number to output stream

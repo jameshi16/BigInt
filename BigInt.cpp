@@ -7,8 +7,14 @@
 BigInt::BigInt(std::string stringOfNumbers)
 {
   /* Check that the entire string is an integer */
-  if (stringOfNumbers.find_first_not_of("0123456789") != std::string::npos)
-    throw std::invalid_argument(stringOfNumbers + " is not a valid number.");
+  if (stringOfNumbers.find_first_not_of("-0123456789") != std::string::npos)
+    throw std::invalid_argument(stringOfNumbers + " is not a valid number. Reason: foreign characters");
+
+  if (stringOfNumbers.find("--") != std::string::npos)
+    throw std::invalid_argument(stringOfNumbers + " is not a valid number. Reason: multiple -");
+
+  if (stringOfNumbers.find_first_of("-") != std::string::npos)
+    -*this; //swaps the polarity
 
   /* Gets each and every base 100 digit of the string */
   for (int iii = stringOfNumbers.size() - 1; iii >= 0; iii--)
@@ -35,7 +41,7 @@ BigInt::BigInt(const std::vector<unsigned char>& m_digits)
   digits = m_digits; //copies the vector
 }
 
-bool BigInt::operator>(BigInt& secondNumber) const
+bool BigInt::operator>(const BigInt& secondNumber) const
 {
   if (digits.size() > secondNumber.digits.size())
     return true; //.size() returns the number of digits. The first set of digits contains more digits than the second set of digits
@@ -45,12 +51,12 @@ bool BigInt::operator>(BigInt& secondNumber) const
 
   if (digits.size() == secondNumber.digits.size()) //if equal number of digits
   {
-    for (unsigned int iii = digits.size(); iii >= 0; iii--) //read the numbers from the highest positional weight to the lowest positional weight
+    for (unsigned int iii = digits.size() - 1; iii >= 0; iii--) //read the numbers from the highest positional weight to the lowest positional weight
     {
-      if (digits[0] > secondNumber.digits[0])
+      if (digits[iii] > secondNumber.digits[iii])
         return true;
 
-      if (secondNumber.digits[0] > digits[0])
+      if (secondNumber.digits[iii] > digits[iii])
         return false;
     }
   }
@@ -58,8 +64,68 @@ bool BigInt::operator>(BigInt& secondNumber) const
   return false; //a common fallthrough
 }
 
+bool BigInt::operator<(const BigInt& secondNumber) const
+{
+  return (secondNumber > *this); //uses the greater than to figure out
+}
+
+bool BigInt::operator==(const BigInt& secondNumber) const
+{
+  /* Checks digits */
+  if (digits.size() != secondNumber.digits.size())
+    return false; //definitely not equal
+
+  /* Checks all the digits of both numbers */
+  for (auto&& it : digits) //loops through all the digits of the current number
+  {
+    for (auto&& it_s : secondNumber.digits) //loops through all the digits of the second number
+    {
+      if (it != it_s)
+        return false; //not equal anymore
+    }
+  }
+
+  return true; //is equal
+}
+
+bool BigInt::operator<=(const BigInt& secondNumber) const
+{
+  if (*this < secondNumber || *this == secondNumber)
+    return true; //returns true
+
+  return false; //returns false
+}
+
+bool BigInt::operator>=(const BigInt& secondNumber) const
+{
+  if (*this > secondNumber || *this == secondNumber)
+    return true; //returns true
+
+  return false; //returns false.
+}
+
 BigInt BigInt::operator+(BigInt secondNumber)
 {
+  /* Redirect the operation if all of the numbers have a polarity of 1 */
+  if (polarity == 1 && secondNumber.polarity == 1)
+  {
+    -*this; -secondNumber; //flips the negative sign
+    return -(*this + secondNumber); //returns the negative of the sum of the numbers when positive
+  }
+
+  /* Redirect the operation if either of the numbers have a polarity of 1 */
+  if (polarity == 0 && secondNumber.polarity == 1)
+  {
+    -secondNumber; //swap the polarity of the number
+    return (*this - secondNumber); //this will handle everything
+  }
+
+  if (polarity == 1 && secondNumber.polarity == 0)
+  {
+    -*this; //swap the polarity of the number
+    return (secondNumber - *this); //this will handle everything
+  }
+
   std::vector<unsigned char> *largerDigits         = nullptr; //initialize the pointer to a nullptr
   const std::vector<unsigned char> *smallerDigits  = nullptr; //initialize the pointer to a nullptr (this code does NOT modify the smallerDigits array.)
 
@@ -125,6 +191,30 @@ BigInt BigInt::operator+(BigInt secondNumber)
   return BigInt(*largerDigits);
 }
 
+BigInt& BigInt::operator++()
+{
+  return *this = *this + BigInt("1");
+}
+
+BigInt BigInt::operator++(int)
+{
+  BigInt returnValue = *this; //sets the return value
+  ++*this; //increments
+  return returnValue;
+}
+
+BigInt BigInt::operator--(int)
+{
+  BigInt returnValue = *this; //sets the return value
+  --*this; //decrements
+  return returnValue;
+}
+
+BigInt& BigInt::operator--()
+{
+  return *this = *this - BigInt("1");
+}
+
 BigInt& BigInt::operator+=(BigInt secondNumber)
 {
   *this = *this + secondNumber;
@@ -133,6 +223,26 @@ BigInt& BigInt::operator+=(BigInt secondNumber)
 
 BigInt BigInt::operator-(BigInt secondNumber)
 {
+  /* Redirect the operation to subtraction if all polarity is 1 */
+  if (polarity == 1 && secondNumber.polarity == 1)
+  {
+    -secondNumber; //swaps the polarity
+    return (secondNumber - *this); //this will handle everything
+  }
+
+  /* Redirect the operation to addition if either polarity is 1 */
+  if (polarity == 1 && secondNumber.polarity == 0)
+  {
+    -*this; -secondNumber; //swaps the polarity
+    return -(*this + secondNumber); //adds the two values together, and then swaps the polarity
+  }
+
+  if (polarity == 0 && secondNumber.polarity == 1) //redirect to addition
+  {
+    -secondNumber; //swaps the polarity
+    return (*this + secondNumber); //basically adding the two numbers together
+  }
+
   BigInt *biggerNumber        = nullptr; //the pointer to the larger number
   const BigInt *smallerNumber = nullptr; //the pointer to the smaller number (never modify the smaller number)
 
@@ -191,6 +301,62 @@ BigInt BigInt::operator-(BigInt secondNumber)
   return BigInt(*biggerNumber); //returns the larger BigInt, no polarity toggle
 }
 
+BigInt& BigInt::operator-=(BigInt secondNumber)
+{
+  return *this = *this - secondNumber;
+}
+
+BigInt& BigInt::operator-()
+{
+  polarity = (polarity) ? (0) : (1); //flips the polarity
+  return *this;
+}
+
+BigInt BigInt::operator*(BigInt secondNumber)
+{
+  BigInt n_count("0"); //starts at 0
+  BigInt currentNumber = *this; //duplicate *this.
+  BigInt newNumber("0"); //the number to return
+
+  bool finalPolarity = 0; //the final polarity
+
+  /* Polarity checking */
+  if (polarity == 0 && secondNumber.polarity == 1)
+  {
+    -secondNumber; //flips the polarity
+    finalPolarity = 1;
+  }
+
+  if (polarity == 1 && secondNumber.polarity == 0)
+  {
+    -*this; //flips the polarity
+    finalPolarity = 1;
+  }
+
+  if (polarity == 1 && secondNumber.polarity == 1)
+  {
+    -*this; -secondNumber; //flips the polarity
+    finalPolarity = 0; //flips the polarity
+  }
+
+  /* Anything * 0 = 0 */
+  if (secondNumber == BigInt("0"))
+  {
+    currentNumber = BigInt("0"); //currentNumber is now 0.
+    n_count = secondNumber; //skips the loop immediately
+  }
+
+  /* This loops only executes for |secondNumber| >= 1 */
+  while (n_count < secondNumber)
+  {
+    newNumber += currentNumber; //current numbers
+    ++n_count; //increments count
+  }
+
+  newNumber.polarity = (finalPolarity) ? (1) : (0); //gets the final polarity
+  return newNumber;
+}
+
 void BigInt::quickPrint()
 {
   trim(); //trims the number
@@ -222,6 +388,12 @@ bool BigInt::trim()
   {
     for (unsigned int iii = digits.size() - 1; iii >= 0; iii--)
     {
+      if (iii == 0 && digits[iii] == 0) //specifically made if there is only 1 single digit, and the digit is 0
+      {
+        clear = true;
+        break; //breaks immediately
+      }
+
       if (digits[iii] == 0) //if the digit is 0
       {
         digits.erase(digits.begin() + iii); //erases the element
