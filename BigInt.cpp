@@ -314,47 +314,90 @@ BigInt& BigInt::operator-()
 
 BigInt BigInt::operator*(BigInt secondNumber)
 {
-  BigInt n_count("0"); //starts at 0
-  BigInt currentNumber = *this; //duplicate *this.
-  BigInt newNumber("0"); //the number to return
+  /* Variable declaration */
+  bool finalPolarity = 0; //determines the final polarity of the number
 
-  bool finalPolarity = 0; //the final polarity
+  BigInt *largerNumber  = nullptr; //the larger bigInt
+  BigInt *smallerNumber = nullptr; //the smaller bigInt
+  BigInt returnValue("0"); //the return value
+
+  BigInt currentNumber = *this; //makes a copy of this to currentNumber
+
+  /* Size checking */
+  if (secondNumber >= currentNumber)
+  {
+    largerNumber  = &secondNumber;
+    smallerNumber = &currentNumber;
+  }
+  else
+  {
+    largerNumber  = &currentNumber;
+    smallerNumber = &secondNumber;
+  }
 
   /* Polarity checking */
-  if (polarity == 0 && secondNumber.polarity == 1)
+  if (smallerNumber->polarity == 1 && largerNumber->polarity == 1)
   {
-    -secondNumber; //flips the polarity
-    finalPolarity = 1;
+    -*this; -secondNumber; //swaps the polarity
+    finalPolarity = 0; //is positive
   }
 
-  if (polarity == 1 && secondNumber.polarity == 0)
+  if (smallerNumber->polarity == 0 && largerNumber->polarity == 1)
   {
-    -*this; //flips the polarity
-    finalPolarity = 1;
+    -secondNumber; //swaps the polarity
+    finalPolarity = 1; //is negative
   }
 
-  if (polarity == 1 && secondNumber.polarity == 1)
+  if (smallerNumber->polarity == 1 && largerNumber->polarity == 0)
   {
-    -*this; -secondNumber; //flips the polarity
-    finalPolarity = 0; //flips the polarity
+    -*this; //swaps the polarity
+    finalPolarity = 1; //is negative
   }
 
-  /* Anything * 0 = 0 */
-  if (secondNumber == BigInt("0"))
+  unsigned short carryOver = 0; //the carry over (this is 2 bytes, so it should be able to store 99 * 99 no problem)
+  /* Attempt multiplication */
+  for (unsigned int iii = 0; iii < smallerNumber->digits.size(); iii++)
   {
-    currentNumber = BigInt("0"); //currentNumber is now 0.
-    n_count = secondNumber; //skips the loop immediately
-  }
+    BigInt bigBuffer = *largerNumber; //replicates largerNumber in this multiplcation
+    unsigned short multiplierBuffer = smallerNumber->digits.at(iii); //stores the smallerNumber in a buffer
+    for (unsigned int jjj = 0; jjj < largerNumber->digits.size(); jjj++)
+    {
+      unsigned short multiplicand = largerNumber->digits.at(jjj); //stores the largerNumber in a buffer
+      multiplicand *= multiplierBuffer; //to save space, put the multiplied value into the mulplicand
 
-  /* This loops only executes for |secondNumber| >= 1 */
-  while (n_count < secondNumber)
-  {
-    newNumber += currentNumber; //current numbers
-    ++n_count; //increments count
-  }
+      multiplicand += carryOver; //adds the carry over after multiplication
+      carryOver = 0; //resets the carry over
 
-  newNumber.polarity = (finalPolarity) ? (1) : (0); //gets the final polarity
-  return newNumber;
+
+      if (multiplicand > 99) //carry over algorithm
+      {
+        carryOver = multiplicand / 100; //gets the carry over, which is the multiplicand divided by the base number, 100. NOTE: int discards decimals
+        bigBuffer.digits.at(jjj) = multiplicand % (100 * carryOver); //gets the remainder and then assigns it to the larger number
+      }
+      else bigBuffer.digits.at(jjj) = multiplicand; //if not, just make the multiplicand the answer
+
+      //Handler for carry over if first positional weight digit has been reached
+      if (jjj == largerNumber->digits.size() - 1 && carryOver != 0)
+      {
+        bigBuffer.digits.push_back(carryOver); //pushes back the carry over
+        carryOver = 0; //resets the carry over
+        break; //breaks the loop
+      }
+    }
+
+    /** Add iii zeros behind the buffer, then add it to the returnValue **/
+    for (unsigned int n_loop = 0; n_loop < iii; n_loop++)
+      bigBuffer.digits.insert(bigBuffer.digits.begin(), 0); //add a zero for each loop
+
+    returnValue += bigBuffer; //adds the buffer to the return value
+  }
+  returnValue.polarity = finalPolarity; //changes the polarity to the correct one
+  return returnValue; //returns the calculated number
+}
+
+BigInt& BigInt::operator*=(BigInt secondNumber)
+{
+  return *this = *this * secondNumber; //returns the value of this after multiplying this to the second number
 }
 
 void BigInt::quickPrint()

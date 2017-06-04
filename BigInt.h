@@ -114,6 +114,12 @@ public:
   BigInt operator*(BigInt secondNumber);
 
   /**
+   * The operator*=. Takes the second number as the multiplier, multiplying and returning the current number
+   * @param secondNumber The second BigInt to multiply to.
+   */
+  BigInt& operator*=(BigInt secondNumber);
+
+  /**
    * Unary (-) overloading
    */
   BigInt& operator-();
