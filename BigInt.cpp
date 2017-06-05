@@ -58,16 +58,17 @@ bool BigInt::operator==(const BigInt& secondNumber) const
     return false; //definitely not equal
 
   /* Checks all the digits of both numbers */
-  for (auto&& it : digits) //loops through all the digits of the current number
+  for (auto iii = 0; iii < this->digits.size(); iii++) //loops through all the digits of the current number
   {
-    for (auto&& it_s : secondNumber.digits) //loops through all the digits of the second number
-    {
-      if (it != it_s)
-        return false; //not equal anymore
-    }
+    if (this->digits[iii] != secondNumber.digits[iii])
+      return false; //is not equal
   }
-
   return true; //is equal
+}
+
+bool BigInt::operator!=(const BigInt& secondNumber) const
+{
+  return !(*this == secondNumber);
 }
 
 bool BigInt::operator<=(const BigInt& secondNumber) const
@@ -475,9 +476,82 @@ BigInt BigInt::operator/(BigInt secondNumber)
   return quotient;
 }
 
-BigInt& operator/=(BigInt secondNumber)
+BigInt& BigInt::operator/=(BigInt secondNumber)
 {
   return *this = *this / secondNumber;
+}
+
+BigInt BigInt::operator%(BigInt secondNumber)
+{
+  BigInt dividend   = *this; //makes n_1 the dividend
+  BigInt& divider   = secondNumber; //makes n_2 the divider
+  BigInt buffer("0"); //creates an empty buffer
+
+  bool finalPolarity = false; //the final polarity of the result
+
+  /* Polarity checking */
+  if (dividend.polarity == 1 && divider.polarity == 1)
+  {
+    -dividend; -divider; //swaps the polarity
+    finalPolarity = 0; //is positive
+  }
+
+  if (dividend.polarity == 0 && divider.polarity == 1)
+  {
+    -divider; //swaps the polarity
+    finalPolarity = 1; //is negative
+  }
+
+  if (dividend.polarity == 1 && divider.polarity == 0)
+  {
+    -dividend; //swaps the polarity
+    finalPolarity = 1; //is negative
+  }
+
+  /* Check for any special cases */
+  if (divider == BigInt("0"))
+  {
+    std::logic_error("BigInt failed: Error 428, division by 0.");
+    return *this; //returns the unharmed number
+  }
+
+  if (divider == BigInt("1"))
+    return *this; //anything divided by 1 is anything
+
+  if (divider > dividend)
+    return BigInt(0); //returns 0
+
+  if (divider == dividend)
+    return BigInt(1); //returns 1
+
+  /* Perform division */
+  for (long iii = dividend.digits.size() - 1; iii >= 0; iii--) //I used long here because long > int
+  {
+    buffer.digits.insert(buffer.digits.begin(), dividend.digits.at(iii)); //pushes back the digit into the buffer
+    buffer.trim(); //trims the BigInt, removing the first 0.
+    if (buffer < divider)
+      continue; //skips to the next iteration
+
+    /* Buffer >= Divider, ready for division */
+    for (unsigned int bi_loop = 1; bi_loop < 99; bi_loop++) //loops through all the numbers from 1 to 99
+    {
+      if (BigInt(bi_loop) * divider > buffer) //if bi_loop * divider is more than the buffer,
+      {
+        buffer -= BigInt(bi_loop - 1) * divider; //subtracts from the buffer - this should give a 1 digit answer (in base 10)
+        break; //break out of the loop
+      }
+      if (BigInt(bi_loop) * divider == buffer) //if bi_loop * divider is exactly equal to the buffer
+      {
+        buffer -= BigInt(bi_loop) * divider; //subtracts fromt he buffer - this should give a 1 digit andswer
+        break; //break out of loop
+      }
+    }
+  }
+
+  /* Anything left in the buffer is the remainder, but we don't need that */
+  buffer.trim(); //trims the quotient
+  buffer.polarity = finalPolarity;
+  return buffer;
 }
 
 void BigInt::quickPrint()
@@ -504,12 +578,33 @@ void BigInt::quickPrint()
   std::cout << "." << std::endl;
 }
 
+void BigInt::print()
+{
+  trim(); //trims the number
+  for (int iii = digits.size() - 1; iii >= 0; iii--)
+  {
+    if (digits[iii] >= 0 && digits[iii] <= 9 && iii != digits.size() - 1)
+    {
+      std::cout << "0" << static_cast<int>(digits.at(iii));
+      continue;
+    }
+
+    if (iii == digits.size() - 1 && polarity == 1)
+    {
+      std::cout << "-" << static_cast<int>(digits.at(iii));
+      continue;
+    }
+
+    std::cout << static_cast<int>(digits.at(iii));
+  }
+}
+
 bool BigInt::trim()
 {
   bool clear = false;
   while (!clear)
   {
-    for (unsigned int iii = digits.size() - 1; iii >= 0; iii--)
+    for (long iii = digits.size() - 1; iii >= 0; iii--)
     {
       if (iii == 0 && digits[iii] == 0) //specifically made if there is only 1 single digit, and the digit is 0
       {

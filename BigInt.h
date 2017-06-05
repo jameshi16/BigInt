@@ -59,6 +59,11 @@ public:
   bool operator==(const BigInt& secondNumber) const;
 
   /**
+   * Relational: opposite of equality
+   */
+  bool operator!=(const BigInt& secondNumber) const;
+
+  /**
    * Relational: less than and equal to
    */
   bool operator<=(const BigInt& secondNumber) const;
@@ -131,10 +136,16 @@ public:
   BigInt operator/(BigInt secondNumber);
 
   /**
-   * The operator/=. Takes the second numberas the divider, dividing and returning the current number
+   * The operator/=. Takes the second number as the divider, dividing and returning the current number
    * @param secondNumber The second BigInt to divide to
    */
   BigInt& operator/=(BigInt secondNumber);
+
+  /**
+   * The operator%. Takes the second number as the divider.
+   * @param secondNumber The second BigInt to divide to.
+   */
+  BigInt operator%(BigInt secondNumber);
 
   /**
    * Unary (-) overloading
@@ -143,6 +154,7 @@ public:
 
 
   void quickPrint(); //a convenient function to use while developing to print the number to output stream
+  void print(); //prints only the number to the output stream
   /**
    * Trims the digits
    * @return Returns true if there were things to trim, false if there were not things to trim
