@@ -3,42 +3,24 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <iostream>
+#include <sstream>
 
 BigInt::BigInt(std::string stringOfNumbers)
 {
-  /* Check that the entire string is an integer */
-  if (stringOfNumbers.find_first_not_of("-0123456789") != std::string::npos)
-    throw std::invalid_argument(stringOfNumbers + " is not a valid number. Reason: foreign characters");
-
-  if (stringOfNumbers.find("--") != std::string::npos)
-    throw std::invalid_argument(stringOfNumbers + " is not a valid number. Reason: multiple -");
-
-  if (stringOfNumbers.find_first_of("-") != std::string::npos)
-    -*this; //swaps the polarity
-
-  /* Gets each and every base 100 digit of the string */
-  for (int iii = stringOfNumbers.size() - 1; iii >= 0; iii--)
-  {
-    const char *digit = nullptr;
-
-    if (iii - 1 >= 0)
-    {
-      digit = new char[3] {stringOfNumbers.at(iii - 1), stringOfNumbers.at(iii), '\0'}; //gets the base 100 digit
-      iii--; //I've already processed the next digit, so I'll decrement once.
-    }
-    else
-      digit = new char[2] {stringOfNumbers.at(iii), '\0'}; //gets the base 100 digit
-
-    char theDigit = std::atoi(digit); //converts the digit into a digit
-    digits.push_back(theDigit); //pushes back the digit to the vector
-    delete[] digit; //deletes the digit char array
-  }
+  initFromString(stringOfNumbers); //uses the private method to initialize the number
 }
 
 BigInt::BigInt(const std::vector<unsigned char>& m_digits)
 {
   //TODO: Check if the digits are valid
   digits = m_digits; //copies the vector
+}
+
+BigInt::BigInt(long long integer)
+{
+  std::stringstream ss;
+  ss << integer;
+  initFromString(ss.str()); //initializes from string
 }
 
 bool BigInt::operator>(const BigInt& secondNumber) const
@@ -51,7 +33,7 @@ bool BigInt::operator>(const BigInt& secondNumber) const
 
   if (digits.size() == secondNumber.digits.size()) //if equal number of digits
   {
-    for (unsigned int iii = digits.size() - 1; iii >= 0; iii--) //read the numbers from the highest positional weight to the lowest positional weight
+    for (long iii = digits.size() - 1; iii >= 0; iii--) //read the numbers from the highest positional weight to the lowest positional weight
     {
       if (digits[iii] > secondNumber.digits[iii])
         return true;
@@ -187,8 +169,10 @@ BigInt BigInt::operator+(BigInt secondNumber)
     }
   }
 
-  /* Returns a new BigInt with the value of the largerDigits. */
-  return BigInt(*largerDigits);
+  /* Returns a new BigInt with the value of the largerDigits. (After trimming) */
+  BigInt returnValue = BigInt(*largerDigits);
+  returnValue.trim(); //trims the return value
+  return returnValue;
 }
 
 BigInt& BigInt::operator++()
@@ -249,7 +233,7 @@ BigInt BigInt::operator-(BigInt secondNumber)
   BigInt currentNumber        = *this; //gets the current number
 
   /* Determine which number is larger */
-  if (secondNumber > currentNumber)
+  if (secondNumber >= currentNumber)
   {
     biggerNumber  = &secondNumber;
     smallerNumber = &currentNumber;
@@ -262,43 +246,54 @@ BigInt BigInt::operator-(BigInt secondNumber)
 
   /* Do the subtraction */
   short carryOver = 0;
+  short currentDigit = 0;
   for (unsigned int iii = 0; iii < biggerNumber->digits.size(); iii++)
   {
+    currentDigit = biggerNumber->digits[iii]; //need to store it in short, so that I can deal with negative numbers
     /** If iii is larger than the smaller number's size - 1 **/
     if (iii > smallerNumber->digits.size() - 1)
     {
-      biggerNumber->digits[iii] += carryOver; //"adds" (it'll actually subtract) the carryOver
+      currentDigit += carryOver; //"adds" (it'll actually subtract) the carryOver
       carryOver = 0; //resets the carryOver
 
-      if (biggerNumber->digits[iii] < 0) //CarryOver algorithm
+      if (currentDigit < 0) //CarryOver algorithm
       {
-        biggerNumber->digits[iii] += 100;
+        currentDigit += 100;
         carryOver = -1; //another carry over!
+        biggerNumber->digits[iii] = currentDigit; //sets the current digit of bigger number
+        currentDigit = 0; //sets the current digit back to 0
         continue;
       }
+
+      biggerNumber->digits[iii] = currentDigit; //sets the current digit of the bigger number
+      currentDigit = 0; //sets the current digit back to 0
 
       break; //carry over is dealt with, nothing to do with the number anymore
     }
 
-    biggerNumber->digits[iii] -= smallerNumber->digits[iii]; //subtracts the digit accordingly
-    biggerNumber->digits[iii] += carryOver; //"adds" (it'll actually subtract) the carryOver
+    currentDigit -= smallerNumber->digits[iii]; //subtracts the digit accordingly
+    currentDigit += carryOver; //"adds" (it'll actually subtract) the carryOver
     carryOver = 0; //carryOver used, reset to 0
 
-    if (biggerNumber->digits[iii] < 0) //CarryOver algorithm
+    if (currentDigit < 0) //CarryOver algorithm
     {
-      biggerNumber->digits[iii] += 100;
+      currentDigit += 100;
       carryOver = -1; //another carry over!
     }
+
+    biggerNumber->digits[iii] = currentDigit; //sets the current digit of bigger number
+    currentDigit = 0; //sets the current digit back to 0
   }
 
+  BigInt returnValue(*biggerNumber); //creates the returnValue
+  returnValue.trim(); //trims the returnValue
   /* Determine if the final BigInt should be positive or negative */
   if (biggerNumber == &secondNumber)
   {
-    BigInt returnValue(*biggerNumber); //creates the return value
     returnValue.polarity = 1; //toggles the polarity of the return value
     return returnValue; //returns the returnValue
   }
-  return BigInt(*biggerNumber); //returns the larger BigInt, no polarity toggle
+  return returnValue; //returns the larger BigInt, no polarity toggle
 }
 
 BigInt& BigInt::operator-=(BigInt secondNumber)
@@ -392,12 +387,97 @@ BigInt BigInt::operator*(BigInt secondNumber)
     returnValue += bigBuffer; //adds the buffer to the return value
   }
   returnValue.polarity = finalPolarity; //changes the polarity to the correct one
+  returnValue.trim(); //trims the returnValue
   return returnValue; //returns the calculated number
 }
 
 BigInt& BigInt::operator*=(BigInt secondNumber)
 {
   return *this = *this * secondNumber; //returns the value of this after multiplying this to the second number
+}
+
+BigInt BigInt::operator/(BigInt secondNumber)
+{
+  BigInt dividend   = *this; //makes n_1 the dividend
+  BigInt& divider   = secondNumber; //makes n_2 the divider
+  BigInt buffer("0"); //creates an empty buffer
+  BigInt quotient("0"); //the quotient
+
+  bool finalPolarity = false; //the final polarity of the result
+
+  /* Polarity checking */
+  if (dividend.polarity == 1 && divider.polarity == 1)
+  {
+    -dividend; -divider; //swaps the polarity
+    finalPolarity = 0; //is positive
+  }
+
+  if (dividend.polarity == 0 && divider.polarity == 1)
+  {
+    -divider; //swaps the polarity
+    finalPolarity = 1; //is negative
+  }
+
+  if (dividend.polarity == 1 && divider.polarity == 0)
+  {
+    -dividend; //swaps the polarity
+    finalPolarity = 1; //is negative
+  }
+
+  /* Check for any special cases */
+  if (divider == BigInt("0"))
+  {
+    std::logic_error("BigInt failed: Error 428, division by 0.");
+    return *this; //returns the unharmed number
+  }
+
+  if (divider == BigInt("1"))
+    return *this; //anything divided by 1 is anything
+
+  if (divider > dividend)
+    return BigInt(0); //returns 0
+
+  if (divider == dividend)
+    return BigInt(1); //returns 1
+
+  /* Perform division */
+  for (long iii = dividend.digits.size() - 1; iii >= 0; iii--) //I used long here because long > int
+  {
+    buffer.digits.insert(buffer.digits.begin(), dividend.digits.at(iii)); //pushes back the digit into the buffer
+    buffer.trim(); //trims the BigInt, removing the first 0.
+    if (buffer < divider)
+    {
+      quotient.digits.insert(quotient.digits.begin(), 0); //inserts a 0 at the back of the number (a.k.a the front of the vector)
+      continue; //skips to the next iteration
+    }
+
+    /* Buffer >= Divider, ready for division */
+    for (unsigned int bi_loop = 1; bi_loop < 99; bi_loop++) //loops through all the numbers from 1 to 99
+    {
+      if (BigInt(bi_loop) * divider > buffer) //if bi_loop * divider is more than the buffer,
+      {
+        quotient.digits.insert(quotient.digits.begin(), bi_loop - 1); //adds bi_loop - 1 into the quotient
+        buffer -= BigInt(bi_loop - 1) * divider; //subtracts from the buffer - this should give a 1 digit answer (in base 10)
+        break; //break out of the loop
+      }
+      if (BigInt(bi_loop) * divider == buffer) //if bi_loop * divider is exactly equal to the buffer
+      {
+        quotient.digits.insert(quotient.digits.begin(), bi_loop); //adds bi_loop into the quotient
+        buffer -= BigInt(bi_loop) * divider; //subtracts fromt he buffer - this should give a 1 digit andswer
+        break; //break out of loop
+      }
+    }
+  }
+
+  /* Anything left in the buffer is the remainder, but we don't need that */
+  quotient.trim(); //trims the quotient
+  quotient.polarity = finalPolarity;
+  return quotient;
+}
+
+BigInt& operator/=(BigInt secondNumber)
+{
+  return *this = *this / secondNumber;
 }
 
 void BigInt::quickPrint()
@@ -421,7 +501,7 @@ void BigInt::quickPrint()
     std::cout << static_cast<int>(digits.at(iii));
   }
 
-  std::cout << ".";
+  std::cout << "." << std::endl;
 }
 
 bool BigInt::trim()
@@ -449,5 +529,39 @@ bool BigInt::trim()
         break; //breaks out of the loop
       }
     }
+  }
+}
+
+void BigInt::initFromString(std::string stringOfNumbers)
+{
+  /* Check that the entire string is an integer */
+  if (stringOfNumbers.find_first_not_of("-0123456789") != std::string::npos)
+    throw std::invalid_argument(stringOfNumbers + " is not a valid number. Reason: foreign characters");
+
+  if (stringOfNumbers.find("--") != std::string::npos)
+    throw std::invalid_argument(stringOfNumbers + " is not a valid number. Reason: multiple -");
+
+  if (stringOfNumbers.find_first_of("-") != std::string::npos)
+  {
+    -*this; //swaps the polarity
+    stringOfNumbers.erase(stringOfNumbers.begin() + stringOfNumbers.find_first_of("-"));
+  }
+
+  /* Gets each and every base 100 digit of the string */
+  for (int iii = stringOfNumbers.size() - 1; iii >= 0; iii--)
+  {
+    const char *digit = nullptr;
+
+    if (iii - 1 >= 0)
+    {
+      digit = new char[3] {stringOfNumbers.at(iii - 1), stringOfNumbers.at(iii), '\0'}; //gets the base 100 digit
+      iii--; //I've already processed the next digit, so I'll decrement once.
+    }
+    else
+      digit = new char[2] {stringOfNumbers.at(iii), '\0'}; //gets the base 100 digit
+
+    char theDigit = std::atoi(digit); //converts the digit into a digit
+    digits.push_back(theDigit); //pushes back the digit to the vector
+    delete[] digit; //deletes the digit char array
   }
 }

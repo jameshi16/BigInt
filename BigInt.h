@@ -24,6 +24,11 @@ public:
    * @param m_digits The digits of numbers
    */
   BigInt(const std::vector<unsigned char>& m_digits); //a constructor taking in the digits form
+  /**
+   * A constructor that takes in a actual number (up to long long) as input
+   * @param  integer The said number
+   */
+  BigInt(long long integer); //a constructor taking in an actual number
 
   BigInt(const BigInt&)=default; //default copy constructor
   BigInt(BigInt&&)=default; //default move constructor
@@ -120,6 +125,18 @@ public:
   BigInt& operator*=(BigInt secondNumber);
 
   /**
+   * The operator/. Takes the second number as the divider.
+   * @param secondNumber The second BigInt to divide to.
+   */
+  BigInt operator/(BigInt secondNumber);
+
+  /**
+   * The operator/=. Takes the second numberas the divider, dividing and returning the current number
+   * @param secondNumber The second BigInt to divide to
+   */
+  BigInt& operator/=(BigInt secondNumber);
+
+  /**
    * Unary (-) overloading
    */
   BigInt& operator-();
@@ -135,6 +152,13 @@ protected:
 private:
   std::vector<unsigned char> digits = {}; //the digits of the BigInt. The digit with the highest positional weight is the last one.
   //I use unsigned char because I don't want my char to have a sign.
+
+  /**
+   * Initializes the class from string
+   * @param stringOfNumbers A string
+   */
+  void initFromString(std::string stringOfNumbers);
+
   bool polarity = 0; //0 is positive, 1 is negative.
 };
 
